@@ -1,17 +1,14 @@
-//
-//  Stock_SearchApp.swift
-//  Stock-Search
-//
-//  Created by Fernando Arenas on 2025-05-17.
-//
-
 import SwiftUI
 
 @main
 struct Stock_SearchApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            let service = StockSearchApiService()
+            let provider = StockSearchProvider(service: service)
+            let screenModel = StockSearchScreenModel(provider: provider)
+            return StockSearchScreen(viewModel: screenModel)
         }
+        
     }
 }
