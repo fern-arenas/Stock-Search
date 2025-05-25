@@ -27,7 +27,7 @@ final class APIService {
     
     func load<T: Decodable>(url: URL) async throws -> T? {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return try await Task.detached(priority: .utility) { [decoder] in
+        return try await Task { [decoder] in
             let data = try Data(contentsOf: url)
             return try decoder.decode(T.self, from: data)
         }.value

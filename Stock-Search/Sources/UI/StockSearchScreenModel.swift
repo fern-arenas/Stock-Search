@@ -53,6 +53,10 @@ where Provider: StockSearchProviding {
             if shouldShowEmptyState() {
                 screenState = .empty
             }
+        } catch let error as URLError where error.code == .cancelled {
+            return
+        }  catch is CancellationError {
+            return
         } catch {
             screenState = .error(error.localizedDescription)
         }

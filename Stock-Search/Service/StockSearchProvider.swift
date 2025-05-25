@@ -25,11 +25,11 @@ where Service: StockSearchService {
         
         let (current, historical) = try await (currentData, historicalData)
         
-        lastCachedQuery = query
-        
-        let stocks = processStocks(query: query, historical: historical, current: current)
+        let stocks = try processStocks(query: query, historical: historical, current: current)
         
         try await service.saveCache(cache)
+        
+        lastCachedQuery = query
         
         return stocks
     }
@@ -58,7 +58,7 @@ where Service: StockSearchService {
         query: SearchQuery,
         historical: [HistoricalStock],
         current: [CurrentStock]
-    ) -> [Stock] {
+    ) throws -> [Stock] {
         let currentById = Dictionary(uniqueKeysWithValues: current.map { ($0.id, $0) })
         var filtered: [Stock] = []
         var addedIds = Set<Int>()
@@ -83,6 +83,8 @@ where Service: StockSearchService {
                 filtered.append(stock)
             }
         }
+        
+        try Task.checkCancellation()
         
         self.cache = .init(date: Date(), values: cache)
         
