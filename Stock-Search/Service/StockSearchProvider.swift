@@ -2,7 +2,7 @@ import Foundation
 
 actor StockSearchProvider<Service>: StockSearchProviding
 where Service: StockSearchService {
-    private var cache: [String: Stock] = [:]
+    private var cache: VersionedCache = .empty
     private var lastCachedQuery: SearchQuery = .init("")
     private let service: Service
     
@@ -11,7 +11,7 @@ where Service: StockSearchService {
     }
     
     func loadCache() async throws {
-        if let offlineCache: [String: Stock] = try await service.stockCache() {
+        if let offlineCache: VersionedCache = try await service.stockCache() {
             self.cache = offlineCache
         }
     }
@@ -35,16 +35,23 @@ where Service: StockSearchService {
     }
     
     private func checkCache(with query: SearchQuery) -> [Stock] {
+        let cacheAgeLimit: TimeInterval = 5 * 60 // 5 minutes
+        
+        guard let cacheDate = cache.date,
+              Date().timeIntervalSince(cacheDate) < cacheAgeLimit else {
+            return []
+        }
+        
         // This check is added to avoid an issue with the user querying for "AT" and
         // then "A" the second query could return incomplete information due to cache containing an
         // "A" prefix
-        if query.value.hasPrefix(lastCachedQuery.value) {
-            return cache
-                .filter { $0.key.hasPrefix(query.value) }
-                .map { $0.value }
+        guard query.value.hasPrefix(lastCachedQuery.value) else {
+            return []
         }
         
-        return []
+        return cache.values
+            .filter { $0.key.hasPrefix(query.value) }
+            .map(\.value)
     }
     
     private func processStocks(
@@ -55,6 +62,7 @@ where Service: StockSearchService {
         let currentById = Dictionary(uniqueKeysWithValues: current.map { ($0.id, $0) })
         var filtered: [Stock] = []
         var addedIds = Set<Int>()
+        var cache: [String: Stock] = [:]
         
         for historicalStock in historical {
             guard let currentStock = currentById[historicalStock.id] else { continue }
@@ -75,6 +83,8 @@ where Service: StockSearchService {
                 filtered.append(stock)
             }
         }
+        
+        self.cache = .init(date: Date(), values: cache)
         
         return filtered.sorted { $0.ticker < $1.ticker }
     }

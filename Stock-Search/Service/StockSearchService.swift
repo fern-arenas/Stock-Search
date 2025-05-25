@@ -2,8 +2,8 @@ import Foundation
 
 protocol StockSearchService {
     func stocks<T: Decodable>(value valueType: StockValueType) async throws -> [T]
-    func stockCache() async throws -> [String: Stock]?
-    func saveCache(_ cache: [String: Stock]) async throws
+    func stockCache() async throws -> VersionedCache?
+    func saveCache(_ cache: VersionedCache) async throws
 }
 
 final class StockSearchApiService: StockSearchService {
@@ -15,15 +15,24 @@ final class StockSearchApiService: StockSearchService {
         return response.stocks
     }
     
-    func stockCache() async throws -> [String: Stock]? {
+    func stockCache() async throws -> VersionedCache? {
         try await APIService.shared.load(url: URLs.cacheURL)
     }
     
-    func saveCache(_ cache: [String: Stock]) async throws {
+    func saveCache(_ cache: VersionedCache) async throws {
         try await APIService.shared.save(cache, url: URLs.cacheURL)
     }
 }
 
 private struct StockResponse<T: Decodable>: Decodable {
     let stocks: [T]
+}
+
+struct VersionedCache: Codable {
+    let date: Date?
+    var values: [String: Stock]
+    
+    static var empty: VersionedCache {
+        VersionedCache(date: nil, values: [:])
+    }
 }
