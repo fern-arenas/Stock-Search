@@ -1,4 +1,4 @@
-struct SearchQuery: Equatable {
+struct SearchQuery: Hashable {
     let value: String
     var isEmpty: Bool { value.isEmpty }
 

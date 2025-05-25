@@ -3,8 +3,14 @@ import Foundation
 actor StockSearchProvider<Service>: StockSearchProviding
 where Service: StockSearchService {
     private var cache: VersionedCache = .empty
-    private var lastCachedQuery: SearchQuery = .init("")
+    private var queryHistory: Set<SearchQuery> = []
     private let service: Service
+    private var isCacheFresh: Bool {
+        guard let cacheDate = cache.date,
+              Date().timeIntervalSince(cacheDate) < 5 * 60
+        else { return false }
+        return true
+    }
     
     init(service: Service) {
         self.service = service
@@ -27,31 +33,38 @@ where Service: StockSearchService {
         
         let stocks = try processStocks(query: query, historical: historical, current: current)
         
-        try await service.saveCache(cache)
+        updateQueryHistory(with: query)
         
-        lastCachedQuery = query
+        try await service.saveCache(cache)
         
         return stocks
     }
     
     private func checkCache(with query: SearchQuery) -> [Stock] {
-        let cacheAgeLimit: TimeInterval = 5 * 60 // 5 minutes
-        
-        guard let cacheDate = cache.date,
-              Date().timeIntervalSince(cacheDate) < cacheAgeLimit else {
+        guard isCacheFresh else {
+            queryHistory.removeAll()
+            cache.values.removeAll()
             return []
         }
         
         // This check is added to avoid an issue with the user querying for "AT" and
         // then "A" the second query could return incomplete information due to cache containing an
         // "A" prefix
-        guard query.value.hasPrefix(lastCachedQuery.value) else {
-            return []
-        }
+        guard !queryHistory.contains(where: { query.value.hasPrefix($0.value) })
+        else { return [] }
         
         return cache.values
             .filter { $0.key.hasPrefix(query.value) }
             .map(\.value)
+    }
+    
+    private func updateQueryHistory(with query: SearchQuery) {
+        // Removes "AT" and replaces it with "A"
+        for item in queryHistory where item.value.hasPrefix(query.value) {
+            queryHistory.remove(item)
+        }
+        
+        queryHistory.insert(query)
     }
     
     private func processStocks(
