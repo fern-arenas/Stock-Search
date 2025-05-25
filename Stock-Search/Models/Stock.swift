@@ -1,6 +1,6 @@
 import Foundation
 
-struct Stock: Identifiable, Equatable {
+struct Stock: Identifiable, Equatable, Codable {
     let id: Int
     let name: String
     let ticker: String

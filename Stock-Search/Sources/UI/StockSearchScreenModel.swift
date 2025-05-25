@@ -3,6 +3,7 @@ import Foundation
 
 protocol StockSearchProviding {
     func stocks(query: SearchQuery) async throws -> [Stock]
+    func loadCache() async throws
 }
 
 final class StockSearchScreenModel<Provider>: StockSearchScreenViewModel
@@ -26,6 +27,16 @@ where Provider: StockSearchProviding {
     init(provider: Provider, debounceInterval: Duration = .seconds(0.5)) {
         self.provider = provider
         self.debounceInterval = debounceInterval
+        
+        loadCache()
+    }
+    
+    private func loadCache() {
+        Task {
+            screenState = .loading
+            try? await provider.loadCache()
+            screenState = nil
+        }
     }
 
     private func performSearch(for query: SearchQuery) async {

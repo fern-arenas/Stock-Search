@@ -10,6 +10,12 @@ where Service: StockSearchService {
         self.service = service
     }
     
+    func loadCache() async throws {
+        if let offlineCache: [String: Stock] = try await service.stockCache() {
+            self.cache = offlineCache
+        }
+    }
+    
     func stocks(query: SearchQuery) async throws -> [Stock] {
         let cachedStocks = checkCache(with: query)
         if !cachedStocks.isEmpty { return cachedStocks }
@@ -21,7 +27,11 @@ where Service: StockSearchService {
         
         lastCachedQuery = query
         
-        return processStocks(query: query, historical: historical, current: current)
+        let stocks = processStocks(query: query, historical: historical, current: current)
+        
+        try await service.saveCache(cache)
+        
+        return stocks
     }
     
     private func checkCache(with query: SearchQuery) -> [Stock] {

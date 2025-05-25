@@ -5,6 +5,10 @@ enum URLs {
         https://gist.githubusercontent.com/rockarts/07e1f458e79ba521a7e62aec6b231479/raw/\
         75484217fab58cd86876ae0bc910bc61020978f5/
         """
+    
+    static let cacheURL: URL = FileManager.default
+        .urls(for: .documentDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("stock_cache.json")
 }
 
 enum StockValueType: String {
